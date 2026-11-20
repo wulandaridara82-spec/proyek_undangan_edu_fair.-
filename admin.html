@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Edu Fair 2026</title>
+    <link rel="stylesheet" href="style.css">
+
+    <style>
+        body {
+            background: #f2f5fa;
+        }
+
+        .admin-header {
+            background: linear-gradient(120deg, #102746, #3285e8);
+            color: white;
+            padding: 35px 8%;
+        }
+
+        .admin-header h1 {
+            font-size: 30px;
+        }
+
+        .admin-header p {
+            color: #dcecff;
+        }
+
+        .admin-container {
+            padding: 40px 8%;
+        }
+
+        .admin-card {
+            background: white;
+            padding: 25px;
+            border-radius: 13px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.04);
+        }
+
+        .upload-box {
+            border: 2px dashed #a9c6e5;
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 15px;
+            background: #f6f9fe;
+        }
+
+        input[type="file"] {
+            margin-top: 12px;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            min-width: 750px;
+        }
+
+        th, td {
+            padding: 13px;
+            border-bottom: 1px solid #e5ebf3;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        th {
+            background: #eaf3fc;
+            color: #203b60;
+        }
+
+        .wa-button {
+            padding: 9px 13px;
+            background: #168b55;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            display: inline-block;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .wa-button:hover {
+            background: #106d42;
+        }
+
+        .status-text {
+            color: #64748b;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: white;
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="admin-header">
+        <p class="section-label">PANEL PENGELOLAAN</p>
+        <h1>Admin Dashboard</h1>
+        <p>Edu Fair & Career Day 2026</p>
+        <a href="index.html" class="back-link">← Lihat halaman undangan</a>
+    </header>
+
+    <main class="admin-container">
+
+        <section class="admin-card">
+            <h2>📂 Upload Data Tamu</h2>
+            <p>Unggah file data-tamu.csv untuk menampilkan daftar undangan.</p>
+
+            <div class="upload-box">
+                <label for="csvFile"><strong>Pilih file CSV:</strong></label><br>
+                <input type="file" id="csvFile" accept=".csv">
+                <p class="status-text" id="status">
+                    Belum ada file yang diunggah.
+                </p>
+            </div>
+        </section>
+
+        <section class="admin-card">
+            <h2>📋 Daftar Tamu Undangan</h2>
+            <p>Setiap tamu memiliki link undangan yang dipersonalisasi.</p>
+
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nama Tamu</th>
+                            <th>Instansi</th>
+                            <th>Kategori</th>
+                            <th>WhatsApp</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelTamu">
+                        <tr>
+                            <td colspan="6">Silakan unggah file CSV terlebih dahulu.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const csvFile = document.getElementById("csvFile");
+        const tabelTamu = document.getElementById("tabelTamu");
+        const statusText = document.getElementById("status");
+
+        // Membaca CSV dan memisahkan kolom dengan memperhatikan tanda kutip
+        function parseCSV(text) {
+            const rows = [];
+            let row = [];
+            let field = "";
+            let inQuotes = false;
+
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                const next = text[i + 1];
+
+                if (char === '"' && inQuotes && next === '"') {
+                    field += '"';
+                    i++;
+                } else if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === "," && !inQuotes) {
+                    row.push(field.trim());
+                    field = "";
+                } else if ((char === "\n" || char === "\r") && !inQuotes) {
+                    if (char === "\r" && next === "\n") i++;
+
+                    row.push(field.trim());
+
+                    if (row.some(value => value !== "")) {
+                        rows.push(row);
+                    }
+
+                    row = [];
+                    field = "";
+                } else {
+                    field += char;
+                }
+            }
+
+            row.push(field.trim());
+
+            if (row.some(value => value !== "")) {
+                rows.push(row);
+            }
+
+            return rows;
+        }
+
+        csvFile.addEventListener("change", function(event) {
+            const file = event.target.files[0];
+
+            if (!file) return;
+
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                const rows = parseCSV(e.target.result);
+
+                if (rows.length < 2) {
+                    statusText.textContent = "Data CSV tidak ditemukan.";
+                    return;
+                }
+
+                const headers = rows[0].map(header =>
+                    header.replace(/^\uFEFF/, "").trim()
+                );
+
+                const required = [
+                    "id", "nama_tamu", "instansi",
+                    "kategori", "no_whatsapp"
+                ];
+
+                const valid = required.every(header =>
+                    headers.includes(header)
+                );
+
+                if (!valid) {
+                    statusText.textContent =
+                        "Format kolom CSV tidak sesuai.";
+                    return;
+                }
+
+                const data = rows.slice(1).map(row => {
+                    const item = {};
+
+                    headers.forEach((header, index) => {
+                        item[header] = row[index] || "";
+                    });
+
+                    return item;
+                });
+
+                tampilkanTamu(data);
+                statusText.textContent =
+                    "Berhasil memuat " + data.length + " data tamu.";
+            };
+
+            reader.readAsText(file);
+        });
+
+        function tampilkanTamu(data) {
+            tabelTamu.innerHTML = "";
+
+            data.forEach(tamu => {
+                const tr = document.createElement("tr");
+
+                const values = [
+                    tamu.id,
+                    tamu.nama_tamu,
+                    tamu.instansi,
+                    tamu.kategori,
+                    tamu.no_whatsapp
+                ];
+
+                values.forEach(value => {
+                    const td = document.createElement("td");
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+
+                const actionCell = document.createElement("td");
+                const button = document.createElement("a");
+
+                button.className = "wa-button";
+                button.href = buatLinkWhatsApp(tamu);
+                button.target = "_blank";
+                button.rel = "noopener noreferrer";
+                button.textContent = "Kirim Undangan";
+
+                actionCell.appendChild(button);
+                tr.appendChild(actionCell);
+                tabelTamu.appendChild(tr);
+            });
+        }
+
+        function buatLinkWhatsApp(tamu) {
+            const url = new URL("index.html", window.location.href);
+
+            url.searchParams.set("nama", tamu.nama_tamu);
+            url.searchParams.set("to", tamu.instansi);
+            url.searchParams.set("kategori", tamu.kategori);
+
+            const pesan =
+                "Yth. " + tamu.nama_tamu + ",\n\n" +
+                "Dengan hormat, kami mengundang Anda dari " +
+                tamu.instansi + " untuk menghadiri kegiatan " +
+                "Edu Fair & Career Day 2026.\n\n" +
+                "Kategori: " + tamu.kategori + "\n\n" +
+                "Silakan buka undangan digital berikut:\n" +
+                url.href + "\n\n" +
+                "Terima kasih.";
+
+            const nomor = tamu.no_whatsapp.replace(/\D/g, "");
+
+            return "https://wa.me/" + nomor +
+                "?text=" + encodeURIComponent(pesan);
+        }
+    </script>
+
+</body>
+</html>
